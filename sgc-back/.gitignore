@@ -2,6 +2,7 @@ node_modules
 dist
 dist-ssr
 *.local
+sg-c-88977-firebase-adminsdk.json
 
 # Editor directories and files
 .vscode/*
