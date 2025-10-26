@@ -1,6 +1,6 @@
 
 
-const BACKEND_URL = "http://localhost:5000"; // adjust for deployment
+const BACKEND_URL = "https://sgc-7zhd.onrender.com"; // adjust for deployment
 let map, ambulanceMarker, hospitalMarkers = [], hospitals = [], hospitalMap = {}, tripTimerInterval, routingControl;
 let currentPos = { lat: 17.4065, lng: 78.4772 };
 let tripActive = false, updateCount = 0, tripStartTime = null;
@@ -18,7 +18,7 @@ async function login() {
     }
 
     try {
-        const res = await fetch("http://localhost:5000/driver/login", {  //i have to change the backendq url here
+        const res = await fetch("https://sgc-7zhd.onrender.com/driver/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ rcNumber: rc })
