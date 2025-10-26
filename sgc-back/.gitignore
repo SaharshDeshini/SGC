@@ -3,7 +3,7 @@ dist
 dist-ssr
 *.local
 sg-c-88977-firebase-adminsdk.json
-
+.env
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
