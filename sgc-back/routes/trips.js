@@ -155,4 +155,33 @@ router.post("/complete", async (req, res) => {
   }
 });
 
+// 🚦 Get all intersections with signal status
+router.get("/intersections", async (req, res) => {
+  try {
+    const snapshot = await db.collection("intersectons").get(); // your Firestore collection name
+
+    if (snapshot.empty) {
+      return res.json([]);
+    }
+
+    const intersections = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      intersections.push({
+        id: doc.id,
+        intersectionId: data.intersectionId || doc.id,
+        signalStatus: data.signalStatus || "Red",
+        latitude: data.location?.latitude || null,
+        longitude: data.location?.longitude || null,
+      });
+    });
+
+    return res.json(intersections);
+  } catch (error) {
+    console.error("🔥 Error fetching intersections:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 module.exports = router;
