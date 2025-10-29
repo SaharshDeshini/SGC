@@ -66,26 +66,65 @@ router.post("/start", async (req, res) => {
 router.post("/updateLocation", async (req, res) => {
   try {
     const { tripId, location } = req.body;
-    if (!tripId || !location) return res.status(400).json({ error: "tripId & location required" });
+    if (!tripId || !location)
+      return res.status(400).json({ error: "tripId & location required" });
 
     const tripRef = db.collection("trips").doc(tripId);
     const tripSnap = await tripRef.get();
-    if (!tripSnap.exists) return res.status(404).json({ error: "Trip not found" });
+    if (!tripSnap.exists)
+      return res.status(404).json({ error: "Trip not found" });
 
     const tripData = tripSnap.data();
 
     // Save new location
     await tripRef.update({ currentLocation: location, updatedAt: new Date() });
 
-    // Broadcast to hospital WS clients
+    // 🔄 Broadcast to hospital WS clients (real-time dashboard updates)
     const hospitalId = tripData.hospitalId;
     if (global.hospitalClients && global.hospitalClients[hospitalId]) {
       global.hospitalClients[hospitalId].forEach((client) => {
-        client.send(JSON.stringify({ event: "locationUpdate", tripId, ambulanceId: tripData.ambulanceId, location }));
+        client.send(
+          JSON.stringify({
+            event: "locationUpdate",
+            tripId,
+            ambulanceId: tripData.ambulanceId,
+            location,
+          })
+        );
       });
     }
 
-    // Check intersections
+    // ✅ Simple coordinate-based demo signal control (Pragathi Nagar → Apollo Secunderabad)
+    const FIRST_POINT = { latitude: 17.52160, longitude: 78.39639 }; // Green point
+    const SECOND_POINT = { latitude: 17.51905, longitude: 78.39637 }; // Red point
+
+    if (typeof global.demoSignal === "undefined") global.demoSignal = "Red";
+
+    // If ambulance crosses FIRST_POINT → turn signal Green
+    if (location.latitude <= FIRST_POINT.latitude && global.demoSignal !== "Green") {
+      global.demoSignal = "Green";
+      console.log("🚦 GREEN ON → crossed first point (Pragathi Nagar)");
+      await db.collection("intersectons").doc("DEMO_SIGNAL").set({
+        intersectionId: "DEMO_SIGNAL",
+        signalStatus: "Green",
+        updatedAt: new Date(),
+        location: FIRST_POINT,
+      });
+    }
+
+    // If ambulance crosses SECOND_POINT → turn signal Red
+    if (location.latitude <= SECOND_POINT.latitude && global.demoSignal !== "Red") {
+      global.demoSignal = "Red";
+      console.log("🔴 RED ON → crossed second point (Apollo Secunderabad)");
+      await db.collection("intersectons").doc("DEMO_SIGNAL").set({
+        intersectionId: "DEMO_SIGNAL",
+        signalStatus: "Red",
+        updatedAt: new Date(),
+        location: SECOND_POINT,
+      });
+    }
+
+    // ⚙️ Existing intersection logic (optional; keep for realism)
     const intersections = await db.collection("intersectons").get();
     let passedIntersections = tripData.passedIntersections || {};
 
@@ -102,7 +141,7 @@ router.post("/updateLocation", async (req, res) => {
       };
 
       // Case 1: Approaching (within queue length before signal) → GREEN
-      if (!state.activated && distance < 0 && Math.abs(distance) <= (QUEUE_LENGTH+200)) {
+      if (!state.activated && distance < 0 && Math.abs(distance) <= (QUEUE_LENGTH + 200)) {
         console.log(`🚦 GREEN ON: ${tripData.ambulanceId} approaching ${inter.intersectionId}`);
         await db.collection("intersectons").doc(doc.id).update({
           signalStatus: "Green",
@@ -111,13 +150,13 @@ router.post("/updateLocation", async (req, res) => {
         state.activated = true;
       }
 
-      // Case 2: Mark ready when very close (optional safety)
+      // Case 2: Mark ready when very close
       if (state.activated && !state.readyToReset && distance >= 0 && distance <= 50) {
         console.log(`✅ ${tripData.ambulanceId} reached ${inter.intersectionId}, preparing for reset`);
         state.readyToReset = true;
       }
 
-      // Case 3: Passed → reset signal (either flagged ready OR directly crossed)
+      // Case 3: Passed → reset signal
       if (state.activated && !state.passed && distance > 50) {
         console.log(`🔴 RESET: ${tripData.ambulanceId} crossed ${inter.intersectionId}`);
         await db.collection("intersectons").doc(doc.id).update({
@@ -136,6 +175,7 @@ router.post("/updateLocation", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // 🏁 Complete Trip
 router.post("/complete", async (req, res) => {
