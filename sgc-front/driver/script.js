@@ -128,6 +128,14 @@ function initMap() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
+
+    var trafficSignalIcon = L.icon({
+        iconUrl: 'https://img.icons8.com/plasticine/100/000000/traffic-light.png',
+        iconSize: [50, 50],
+    });
+
+    L.marker([17.5208, 78.396], { icon: trafficSignalIcon }).addTo(map);
+
     setTimeout(() => map.invalidateSize(), 100);
     displayHospitals();
 }
